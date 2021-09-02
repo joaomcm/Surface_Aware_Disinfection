@@ -152,6 +152,37 @@ def getFinalPath(nodeTour,pathDict,gridPointList,chosenPointIndices):
         pathLength += point1.distance(point2) # This is correct, because all pairs of edges are between straight lines on the grid - hence Euclidean distances
     return pathMilestones, pathEdges, pathLength
 
+def getTour(costMatrix, filename, user_comment='This is a tour for the given problem'):
+    '''
+        Takes a distance matrix (not necessarily Euclidean distances) for a set of points, and uses a TSP
+        solver to find a good tour among all of them. The tour is written to a text file, specified by filename
+        along with a user comment, if so desired 
+    '''
+
+    runTSP(costMatrix, filename, user_comment)
+
+def readTourFile(filename, milestones):
+    '''
+        Reads the file which had the tour written to it and extracts the tour
+    '''
+
+    addLine = False
+    getFirstNode = False
+    firstNode = None
+    tour = list()
+    pathLength = 0
+    fp = open(filename, 'r')
+    lines = fp.read().splitlines()
+    startTourIndex = lines.index('TOUR_SECTION')
+    endTourIndex = lines.index('-1')
+    stringTour = lines[startTourIndex + 1: endTourIndex]
+    integerTour = [(int(val) - 1) for val in stringTour] # In the LKH solver, the nodes are indexed starting from 1, so we reduce 1 to start indexing from 0
+    # tour.append(tour[0])
+    # Now, we convert the integer values to their corresponding milestones in Euclidean coordinates
+    # euclideanTour = [milestones[integerTour[i]] for i in range(len(integerTour))]
+
+    return integerTour
+
 def main():
     # getTour(costMatrix1, 'currTSP')
     # tour = readTourFile('currTSP.txt')

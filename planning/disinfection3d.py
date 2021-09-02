@@ -189,8 +189,6 @@ class DisinfectionProblem:
             #     print(i[0].getName(),i[1].getName())
             # print(list(collider.collisions()))
             return False
-
-
         return True
     
     def solve_ik_near_sample(self,robot,lamp,collider,world,place,restarts = 10,tol = 1e-3,neighborhood = 0.4,float_height = 0.08):
@@ -219,8 +217,6 @@ class DisinfectionProblem:
         return False
 
     def determine_reachable_points_robot(self,sampling_places,world,robot,lamp,collider,show_vis = False,neighborhood = 0.4,float_height = 0.08,base_linknum = 2):
-        # myrob = resource.get('/home/motion/Klampt-examples/data/robots/tx90ball.rob')
-
         # before determining the reachable points, let us expand the robot to encourage more "spread out" configurations
     
         self.set_robot_link_collision_margins(robot,0.03,collider,self.angular_dofs)
@@ -246,8 +242,6 @@ class DisinfectionProblem:
         base = robot.link(self.base_height_link)
         base.geometry().setCollisionMargin(0)
         self.set_robot_link_collision_margins(robot,0,collider,self.angular_dofs)
-
-
     
         return reachable,configs
 
@@ -374,7 +368,6 @@ class DisinfectionProblem:
         sampling_places,grid_resolution,original_max_bounds,alpha_shape = self.get_sampling_places(mesh_file, resolution = resolution,convex_scale = convex_scale)
 
         self.alpha_shape = alpha_shape
-
  
 
         pickle.dump(sampling_places,open(sampling_places_file,'wb'))

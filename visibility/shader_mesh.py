@@ -241,6 +241,9 @@ class ShaderMesh:
                 ret.append(ShaderMesh.area_of_triangle(u1,u2,u3))
             self.areas=np.array(ret)
         return self.areas
+    
+    def vanilla_high_touch_prob(self):
+        return self.mesh.visual.face_colors[:,0]
        
     @staticmethod
     def id(arr,val):
