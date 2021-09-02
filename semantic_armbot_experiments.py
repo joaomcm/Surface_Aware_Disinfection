@@ -19,27 +19,16 @@ problem = DisinfectionProblem(
     float_height = 0.08,
     initial_points = 500
 )
-experiment = 'surface_agnostic'
-tmax = 0.5
-total_distances = []
-coverages = []
-resolutions = []
 
-all_meshes = glob('/home/motion//Optimized-UV-Disinfection/data/environment_meshes/aug_10_entire_val_ade20kmodel_vanilla_prob_weighting/estimated_scannet_val/*.ply')
+all_meshes = glob('/data/scannet_subset_all_gt/*.ply')
 
 meshes_series = pd.Series(all_meshes)
 estimated_mask = ~meshes_series.str.split('/',expand = True).iloc[:,-1].str.startswith('gt')
-# we now get the number of done meshes
-
-# done_files = glob('/home/motion/Optimized-UV-Disinfection/3D_results/Semantic/*/{}/armbot/*'.format(experiment))
-# if(done_files):
-#     done_meshes = pd.Series(done_files).str.split('/',expand = True).iloc[:,-4].tolist()
-# else:
-#     done_meshes = []
 
 estimated_meshes = sorted(meshes_series[estimated_mask].tolist())
 failed_meshes = []
-experiments = ['surface_agnostic','soft_thresholding','hard_cutoff_20','hard_cutoff_40','hard_cutoff_60','hard_cutoff_80']
+# experiments = ['surface_agnostic','hard_cutoff_50']
+experiments = ['surface_agnostic']
 
 for experiment in experiments: 
     if(experiment == 'surface_agnostic'):
@@ -51,7 +40,7 @@ for experiment in experiments:
     else:
         hard_cutoff = True
         cutoff_threshold = float(experiment[-2:])/100
-    for time_limit in [10,20,30]:
+    for time_limit in [1]:
         tmax = time_limit/60
         experiment = experiment + '_' + str(time_limit) +'_minutes'
         for mesh_file in estimated_meshes[:5]:
@@ -61,26 +50,23 @@ for experiment in experiments:
                 print(mesh_name)
                 # if(mesh_name not in done_meshes):
                 print('\n\n\n\n performing experiment {} on mesh file = {} \n\n\n'.format(experiment, mesh_file))
-                total_distance,coverage,resolution,res_dir = problem.perform_experiment(
-                results_dir = './3D_results/Semantic',
-                mesh_file = mesh_file,
-                min_distance = 0.05,
-                from_scratch = True,
-                irradiance_from_scratch = True,
-                float_height = 0.15,
-                power = 80,
-                resolution = res,
-                experiment = experiment,
-                tmax = tmax,
-                robot_name = 'armbot',
-                hard_cutoff = hard_cutoff,
-                cutoff_threshold = cutoff_threshold)
+                total_distance, coverage, resolution, res_dir = problem.perform_experiment(
+                    results_dir = './3D_results/Semantic',
+                    mesh_file = mesh_file,
+                    min_distance = 0.05,
+                    from_scratch = True,
+                    irradiance_from_scratch = True,
+                    float_height = 0.15,
+                    power = 80,
+                    resolution = res,
+                    experiment = experiment,
+                    tmax = tmax,
+                    robot_name = 'armbot',
+                    hard_cutoff = hard_cutoff,
+                    cutoff_threshold = cutoff_threshold
+                )
             except Exception as e:
                 print('initial planning failed for mesh {}!'.format(mesh_name))
                 with open('./failed_meshes.txt','a') as f:
                     f.write(mesh_name+'\r\n')
                 pass
-            
-    # else:
-    #     # print('\n\n\n\n\n\n\n mesh already done - skipping mesh {}\n\n\n\n\n\n\n\n\n'.format(mesh_file))
-    #     pass
