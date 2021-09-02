@@ -31,10 +31,10 @@ failed_meshes = []
 experiments = ['surface_agnostic']
 
 for experiment in experiments: 
-    if(experiment == 'surface_agnostic'):
+    if(experiment == 'surface_agnostic_{}_minutes'):
         hard_cutoff = False
         cutoff_threshold = 0
-    elif(experiment == 'soft_thresholding'):
+    elif(experiment == 'soft_thresholding_{}_minutes'):
         hard_cutoff = False
         cutoff_threshold = 0.5
     else:
@@ -42,8 +42,8 @@ for experiment in experiments:
         cutoff_threshold = float(experiment[-2:])/100
     for time_limit in [1]:
         tmax = time_limit/60
-        experiment = experiment + '_' + str(time_limit) +'_minutes'
-        for mesh_file in estimated_meshes[:5]:
+        this_experiment = experiment.format(time_limit)
+        for mesh_file in estimated_meshes[:5:2]:
             try:
                 res = 330
                 mesh_name = mesh_file.split('/')[-1].split('.')[0]
