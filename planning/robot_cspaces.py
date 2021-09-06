@@ -30,11 +30,11 @@ class Robot3DCSpace(CSpace):
         self.base_height_link = base_height_link
         #set bounds
         limits = robot.getJointLimits()
-        limits[0][0] = 0
-        limits[0][1] = 0
+        limits[0][0] = bounds[0]
+        limits[0][1] = bounds[1]
         limits[0][self.base_height_link] = float_height
-        limits[1][0] = bounds[0]
-        limits[1][1] = bounds[1]
+        limits[1][0] = bounds[2]
+        limits[1][1] = bounds[3]
         limits[1][self.base_height_link] = float_height
         # we also set all the joint limits of all joints that are not active to be 
         # equal to their current positions:
@@ -136,8 +136,9 @@ class Robot3DCSpace(CSpace):
         self.remaining_milestones = self.milestones[list(remaining)]
         self.fraction = len(remaining)/self.milestones.shape[0]
         self.create_internal_subgraphs(G_list)
-        # if(self.fraction < 0.35):
-        vis.add('remaining_milestones',[i[:self.robot.numLinks()] for i in self.remaining_milestones],color = [1,0,0,0.5])
+        # if(self.fraction < 0.2):
+        #     vis.add('remaining_milestones',[i[:self.robot.numLinks()] for i in self.remaining_milestones],color = [0,0,1,0.7])
+        #     vis.show()
         
     def feasible(self,q):
 
@@ -384,8 +385,8 @@ class CSpaceObstacleSolver:
                 milestone_1 = 0
                 remaining = self.total_milestones - self.connected_list
                 G_list = self.planner.getRoadmap()
-                if(len(G_list[0]) > 2500):
-                    raise UnreachablePointsError('There are points in the planner that are not feasible after 2500 samples!')
+                if(len(G_list[0]) > 3000):
+                    raise UnreachablePointsError('There are points in the planner that are not feasible after 3000 samples!')
                 G = nx.Graph()
                 self.space.set_remaining_milestones(remaining,G_list)
                 G.add_nodes_from(range(len(G_list[0])))

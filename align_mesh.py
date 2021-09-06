@@ -58,7 +58,7 @@ def main(base_dir):
 
     gt_mesh_list = glob.glob(gt_mesh_glob)
     estimated_mesh_list = glob.glob(estimated_mesh_glob)
-
+    print('mesh lengths gt = {} ; estimated = {}'.format(len(gt_mesh_list),len(estimated_mesh_list)))
     assert len(gt_mesh_list) == len(estimated_mesh_list)
 
     # First pass: check file match

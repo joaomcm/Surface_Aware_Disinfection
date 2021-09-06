@@ -96,6 +96,7 @@ class DisinfectionProblem:
                     final_shape = shape
             alpha_shape = final_shape
         bounds = alpha_shape.bounds
+        print('these are the bounds : {}'.format(bounds))
         x_ = np.arange(bounds[0] - resolution,bounds[2]+resolution,resolution)
         y_ = np.arange(bounds[1] - resolution,bounds[3]+resolution,resolution)
         z_ = np.arange(0,robot_height+resolution,resolution)
@@ -114,10 +115,11 @@ class DisinfectionProblem:
         sampling_places = sampling_places[result]
         print("\n\n\n\n this is the shape of sampling places  = {} \n\n\n\n\n".format(sampling_places.shape))
 
-        return sampling_places,resolution,bounds[2:],alpha_shape
+        return sampling_places,resolution,bounds,alpha_shape
     
     def get_maximum_connected_component_mesh(self,mesh_file):
         full_mesh = tm.exchange.load.load(mesh_file)
+        # full_mesh.show()
         conn_components = tm.graph.split(full_mesh, only_watertight = False)
         max_faces = 0
         for component in conn_components:
@@ -171,7 +173,7 @@ class DisinfectionProblem:
         return world,robot,lamp,collider
 
 
-    def collisionChecker(self,collider,robot):
+    def collisionChecker(self,collider,robot,base_radius = 0.225):
         base_radius = 0.225
         base_center = shapely.geometry.Point(robot.getConfig()[:2])
         within_boundary = self.alpha_shape.contains(base_center)
@@ -267,7 +269,7 @@ class DisinfectionProblem:
         # print(visible_irradiance)
         
         m = gp.Model('Irradiance Solver LP')
-        # m.params.Method = 3
+        m.params.Method = 1
 
         # we create the time variables:
         times = m.addMVar(shape = visible_irradiance.shape[0],vtype = GRB.CONTINUOUS, name = 'times')
@@ -282,19 +284,21 @@ class DisinfectionProblem:
         m.addConstr((power*visible_irradiance.transpose()@times + face_slacks) >= min_fluence_vector)
         m.addConstr(times >= zeros_times)
         m.addConstr(face_slacks >= zeros_slacks)
-        m.addConstr(times.sum() <= 60*60*max_time)
+        if(max_time is not None):
+            m.addConstr(times.sum() <= 60*60*max_time)
         m.update()
         m.optimize()
+        print('Total Time taken was: {} minutes'.format(np.sum(times.x)/60))
         return times.x
 
-    def get_visible_triangle_weights(self,m,visible_points):
+    def get_visible_triangle_weights(self,m,visible_points,area_penalty = 10,semantic_penalty = 10):
         # we consider the probabilities to be encoded in the red channel
         probs = m.mesh.visual.face_colors[:,0].astype(float)/255
         # print('\n\n\n this is probs {} \n\n\n'.format(probs))
         # we calculate the areas:
         areas = m.area()
         visible_areas = areas[visible_points]
-        area_fractions = np.exp(100*(visible_areas/visible_areas.sum()))
+        area_fractions = area_penalty*(visible_areas/np.min(visible_areas[visible_areas>0]))
         # we then filter only the visible probabilities
         probs = probs[visible_points]
         # print('\n\n\n this is probs {} \n\n\n'.format(probs))
@@ -303,13 +307,14 @@ class DisinfectionProblem:
             # if we are using hard probabilistic cutoffs for the area
             if(self.hard_cutoff):
                 # print('\n\n\n\n\n\n APPLYING HARD CUTOFF \n\n\n\n\n')
-                probs = probs > self.cutoff_threshold
+                passes_cutoff = probs > self.cutoff_threshold
                 # print(probs.astype(int)*area_fractions)
-                return probs.astype(int)*area_fractions
+                return passes_cutoff.astype(int)*area_fractions
             else:
                 if(self.cutoff_threshold != 0):
+                    probs[probs <= 0.01] = 0.01 
                     # print('\n\n\n\n\n SOFT THRESHOLDING \n\n\n\n')
-                    return np.exp(probs)*area_fractions
+                    return probs*semantic_penalty*area_fractions
                 else:
                     # cutoff_threshold = 0 indicates surface-agnostic treatment
                     # print('\n\n\nSURFACE AGNOSTIC!!!\n\n\n')
@@ -332,7 +337,10 @@ class DisinfectionProblem:
         experiment = '30_mins',
         robot_name = 'armbot',
         hard_cutoff = False,
-        cutoff_threshold = 0.5):
+        cutoff_threshold = 0.5,
+        area_penalty = 10,
+        semantic_penalty = 10,
+        show_vis = False):
 
         self.hard_cutoff = hard_cutoff
         self.cutoff_threshold = cutoff_threshold
@@ -345,6 +353,10 @@ class DisinfectionProblem:
         if(not os.path.exists(results_dir)):
             os.makedirs(results_dir,exist_ok = True)
 
+            
+        # The irradiance files can be shared between experiments
+        irradiance_file = results_dir + '/{}_irradiance_matrix_{}_divs.p'.format(robot_name,resolution)
+
         results_dir = results_dir + '/{}'.format(experiment)
         if(not os.path.exists(results_dir)):
             os.makedirs(results_dir,exist_ok = True)
@@ -356,7 +368,6 @@ class DisinfectionProblem:
 
         pcd_file = results_dir + "/{}_used_points_{}_divs.pcd".format(robot_name,resolution)
         reachable_points_file = results_dir + '/{}_reachable_{}_divs.p'.format(robot_name,resolution)
-        irradiance_file = results_dir + '/{}_irradiance_matrix_{}_divs.p'.format(robot_name,resolution)
         sampling_places_file = results_dir + '/{}_sampling_places_{}_divs.p'.format(robot_name,resolution)
         configs_file = results_dir + '/{}_configs_{}_divs.p'.format(robot_name,resolution)
         solutions_file = results_dir + '/{}_solutions_{}_divs.p'.format(robot_name,resolution)
@@ -403,9 +414,17 @@ class DisinfectionProblem:
 
             #     vis_tester =Visibility(m,res = 512, useShader = True)
             if(irradiance_from_scratch):
+                print('\n\ncomputing irradiance from scratch\n\n')
                 irradiance_matrix = self.get_irradiance_matrix(vis_tester,m,sampling_places[reachable])
                 pickle.dump(irradiance_matrix,open(irradiance_file,'wb'))
-
+            else:
+                try:
+                    print('\n\n\n attempting to load irradiance from file {}\n\n '.format(irradiance_file))
+                    irradiance_matrix = pickle.load(open(irradiance_file,'rb'))
+                except Exception as e:
+                    print('\n\n\n\n could not load irradiance from file due to {}, computing from scratch \n\n\n\n '.format(e))
+                    irradiance_matrix = self.get_irradiance_matrix(vis_tester,m,sampling_places[reachable])
+                    pickle.dump(irradiance_matrix,open(irradiance_file,'wb'))
 
 
         #else, just load everything from file:
@@ -420,10 +439,11 @@ class DisinfectionProblem:
 
         mu_single = 60*60*power*0.5*irradiance_matrix
         print("\n\n number of reachable points : {} \n".format(np.sum(reachable)))
-        vis.clear()
-        time.sleep(1)
-        vis.add('world',world)
-        vis.show()
+        if(show_vis):
+            vis.clear()
+            time.sleep(1)
+            vis.add('world',world)
+            vis.show()
 
         ## We then process the optimal irradiation spots:
 

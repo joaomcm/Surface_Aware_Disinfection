@@ -27,7 +27,7 @@ class FloatbotDisinfectionProblem(DisinfectionProblem):
     active_dofs,
     robot_cspace_generator,
     robot_cspace_solver,
-    float_height
+    float_height,
     ):
         super().__init__(total_dofs,
         linear_dofs,
@@ -41,6 +41,7 @@ class FloatbotDisinfectionProblem(DisinfectionProblem):
         robot_cspace_generator,
         robot_cspace_solver,
         float_height)
+
     def setup_robot_and_light(self,robotfile = './data/idealbot.rob',
                                     mesh_file = './data/environment_meshes/full_detail_hospital_cad_meters.obj',float_height = 0.08):
         world = WorldModel()
@@ -84,9 +85,9 @@ class FloatbotDisinfectionProblem(DisinfectionProblem):
 
     def determine_reachable_points_robot(self,sampling_places,world,robot,lamp,collider,show_vis = False,neighborhood = 0.4,float_height = 0.08,base_linknum = 2):
             
-        self.set_robot_link_collision_margins(robot,0.15,collider,[])
+        self.set_robot_link_collision_margins(robot,0.10,collider,[])
 
-        show_vis = True
+        show_vis = False
         if(show_vis):
             vis.add('world',world)
                 # eliminating draw distance
@@ -132,7 +133,7 @@ class FloatbotDisinfectionProblem(DisinfectionProblem):
 
     def solve_ik_near_sample(self,robot,lamp,collider,world,place,restarts = 10,tol = 1e-3,neighborhood = 0.4,float_height = 0.08):
         robot.setConfig(place)
-        if(self.collisionChecker(collider)):
+        if(self.collisionChecker(collider,robot,base_radius = 0.075)):
             return True
         else:
             return False
@@ -145,11 +146,11 @@ class Floatbot3DCSpace(Robot3DCSpace):
             self.base_height_link = base_height_link
             #set bounds
             limits = robot.getJointLimits()
-            limits[0][0] = 0
-            limits[0][1] = 0
+            limits[0][0] = bounds[0]
+            limits[0][1] = bounds[1]
             limits[0][self.base_height_link] = 0
-            limits[1][0] = bounds[0]
-            limits[1][1] = bounds[1]
+            limits[1][0] = bounds[2]
+            limits[1][1] = bounds[3]
             limits[1][self.base_height_link] = 2
             # we also set all the joint limits of all joints that are not active to be 
             # equal to their current positions:
@@ -187,46 +188,46 @@ class Floatbot3DCSpace(Robot3DCSpace):
             self.local_lamp_coords = light_local_position
             self.counter = 0
 
+if __name__ == '__main__':
+    problem = FloatbotDisinfectionProblem(
+        total_dofs = 3,
+        linear_dofs = [0,1,2],
+        angular_dofs = [],
+        frozen_dofs = [],
+        base_height_link = 2,
+        robot_height = 1.5,
+        lamp_linknum = 2,
+        lamp_local_coords = [0,0,0],
+        active_dofs = [0,1,2],
+        robot_cspace_generator = Floatbot3DCSpace,
+        robot_cspace_solver = CSpaceObstacleSolver,
+        float_height = 0.08)
 
-problem = FloatbotDisinfectionProblem(
-    total_dofs = 3,
-    linear_dofs = [0,1,2],
-    angular_dofs = [],
-    frozen_dofs = [],
-    base_height_link = 2,
-    robot_height = 1.5,
-    lamp_linknum = 2,
-    lamp_local_coords = [0,0,0],
-    active_dofs = [0,1,2],
-    robot_cspace_generator = Floatbot3DCSpace,
-    robot_cspace_solver = CSpaceObstacleSolver,
-    float_height = 0.08)
 
 
+    experiment = '30_min'
+    tmax = 0.5
+    total_distances = []
+    coverages = []
+    resolutions = []
 
-experiment = '30_min'
-tmax = 0.5
-total_distances = []
-coverages = []
-resolutions = []
-
-tmp = './data/environment_meshes/remeshed_hospital_room_full_35k.obj'
-for res in tqdm([500]):#,20,30,40,50,60,70,80]):
-    total_distance,coverage,resolution,res_dir = problem.perform_experiment(
-    results_dir = './3D_results',
-    mesh_file = './data/environment_meshes/remeshed_hospital_room_full_35k.obj',
-    min_distance = 0.05,
-    from_scratch = True,
-    irradiance_from_scratch = True,
-    float_height = 0.08,
-    power = 80,
-    resolution = res,
-    experiment = experiment,
-    tmax = tmax,
-    robot_name = 'floatbot')
-    total_distances.append(total_distance)
-    coverages.append(coverage)
-    resolutions.append(resolution)
-    df = pd.DataFrame({'resolution':resolutions,'coverage':coverages,'total_distance':total_distances})
-    df.to_csv(res_dir + '/3D_floabot_results.csv', sep = '|', index = False)
+    tmp = './data/environment_meshes/remeshed_hospital_room_full_35k.obj'
+    for res in tqdm([500]):#,20,30,40,50,60,70,80]):
+        total_distance,coverage,resolution,res_dir = problem.perform_experiment(
+        results_dir = './3D_results',
+        mesh_file = './data/environment_meshes/remeshed_hospital_room_full_35k.obj',
+        min_distance = 0.05,
+        from_scratch = True,
+        irradiance_from_scratch = True,
+        float_height = 0.08,
+        power = 80,
+        resolution = res,
+        experiment = experiment,
+        tmax = tmax,
+        robot_name = 'floatbot')
+        total_distances.append(total_distance)
+        coverages.append(coverage)
+        resolutions.append(resolution)
+        df = pd.DataFrame({'resolution':resolutions,'coverage':coverages,'total_distance':total_distances})
+        df.to_csv(res_dir + '/3D_floabot_results.csv', sep = '|', index = False)
 
