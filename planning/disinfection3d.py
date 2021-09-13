@@ -277,7 +277,7 @@ class DisinfectionProblem:
         # and the corresponding slack variables for each face:
         face_slacks = m.addMVar(shape = visible_irradiance.shape[1], vtype = GRB.CONTINUOUS, name = 'face slacks')
 
-        m.setObjective(times.sum() + (1000*visible_area_weights@face_slacks),GRB.MINIMIZE)
+        m.setObjective(times.sum() + (100*visible_area_weights@face_slacks),GRB.MINIMIZE)
         zeros_times = np.zeros(times.shape[0])
         zeros_slacks = np.zeros(face_slacks.shape[0])
         min_fluence_vector = min_fluence*1.1*np.ones(visible_irradiance.shape[1])
